@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Local config (copy from the templates in config/)
+config/project.env
+config/sites.csv
+
+# Research data: recordings, derived tables, site coordinates
+sample/
+embeddings_db/
+out/
+metadata.csv
+aru_locations_*.csv
+*.wav
+*.WAV
+*.flac
+
+# OS
+.DS_Store
+Thumbs.db

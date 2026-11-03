@@ -1,0 +1,3 @@
+site_id,latitude,longitude,recorder,timezone,notes
+SITE_A,38.9351,-74.9060,AudioMoth 1.2,UTC,example row - replace
+SITE_B,38.9680,-74.9600,Song Meter SM4,America/New_York,example row - replace
