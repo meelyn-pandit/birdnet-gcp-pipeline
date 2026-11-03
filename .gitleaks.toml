@@ -1,0 +1,28 @@
+# Secret-scanning rules for gitleaks, used by .githooks/pre-push and
+# .github/workflows/secret-scan.yml. Built-in rules (API tokens, cloud keys,
+# private keys, etc.) are kept; the rules below add project-specific checks.
+title = "birdnet-gcp-pipeline secret scan"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "gcp-billing-account-id"
+description = "Google Cloud billing account ID"
+regex = '''\b[0-9A-F]{6}-[0-9A-F]{6}-[0-9A-F]{6}\b'''
+
+[[rules]]
+id = "env-file"
+description = "Environment file committed (.env, project.env, ...); commit a .template/.example instead"
+path = '''(^|/)([^/]+\.env|\.env(\.[^/]+)?)$'''
+[rules.allowlist]
+paths = ['''\.(template|example|sample)$''']
+
+[[rules]]
+id = "secret-assignment"
+description = "Password, token, API key or secret assigned a literal value"
+regex = '''(?i)[a-z0-9_.-]*(?:passw(?:or)?d|passwd|pwd|secret|api[_-]?key|access[_-]?key|private[_-]?key|auth[_-]?token|token|credentials?)[a-z0-9_.-]*["']?\s*[:=]\s*["']?([^\s"'#,;)]{6,})'''
+secretGroup = 1
+[rules.allowlist]
+# Values that reference a secret instead of containing one.
+regexes = ['''^(?:os\.|getenv|environ|\$|<|\{|None$|null$|true$|false$|process\.env|secrets\.|vars\.|BILLING_ACCOUNT_ID$|your[-_])''']

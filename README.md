@@ -79,3 +79,19 @@ The BirdNET model weights have been released under a non-commercial license
 ever becomes part of commercial or employer work, confirm the current license
 first, or swap in Google's Perch model, which is released under a more
 permissive license.
+
+## Secret scanning
+
+Commits are checked for tokens, keys, passwords, `.env` files and GCP billing
+account IDs at three levels:
+
+- **GitHub push protection** rejects pushes containing known token formats
+  (enabled in the repo settings).
+- **Pre-push hook** runs [gitleaks](https://github.com/gitleaks/gitleaks) with
+  the rules in `.gitleaks.toml` and blocks the push locally. Enable it once
+  per clone (requires gitleaks on your PATH):
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+- **CI** (`.github/workflows/secret-scan.yml`) runs the same scan on every
+  push and pull request and fails the check if anything is found.
