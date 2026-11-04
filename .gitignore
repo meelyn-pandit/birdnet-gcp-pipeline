@@ -20,3 +20,8 @@ aru_locations_*.csv
 # OS
 .DS_Store
 Thumbs.db
+
+# Labeling work files
+review*.csv
+labels*.csv
+labels/
