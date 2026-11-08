@@ -25,3 +25,12 @@ Thumbs.db
 review*.csv
 labels*.csv
 labels/
+
+# Train/test copies of recordings
+dataset/
+
+# Model output caches
+.cache/
+
+# Trained classifiers (derived from research data)
+models/
