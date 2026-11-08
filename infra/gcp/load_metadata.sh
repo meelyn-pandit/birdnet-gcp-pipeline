@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Load metadata.csv into $DATASET.recordings (replaces the table).
-# Usage: bash scripts/load_metadata.sh metadata.csv
+# Load the metadata CSV into $DATASET.recordings (replaces the table).
+# Usage: bash infra/gcp/load_metadata.sh [data/processed/metadata.csv]
 set -euo pipefail
-cd "$(dirname "$0")/.."
-source config/project.env
+cd "$(dirname "$0")/../.."
+source configs/project.env
 
-CSV="${1:-metadata.csv}"
+CSV="${1:-data/processed/metadata.csv}"
 
 bq load --replace \
   --source_format=CSV \

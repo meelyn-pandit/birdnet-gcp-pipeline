@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # One-time GCP setup: enable APIs, create the bucket and BigQuery dataset
-# in the same region. Reads config/project.env.
+# in the same region. Reads configs/project.env.
 set -euo pipefail
-cd "$(dirname "$0")/.."
-source config/project.env
+cd "$(dirname "$0")/../.."
+source configs/project.env
 
 gcloud config set project "$PROJECT_ID"
 

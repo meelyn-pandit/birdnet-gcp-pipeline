@@ -2,35 +2,35 @@
 .venv/
 __pycache__/
 *.pyc
+*.egg-info/
+.pytest_cache/
+build/
+dist/
 
-# Local config (copy from the templates in config/)
-config/project.env
-config/sites.csv
+# Local config (copy from the templates in configs/)
+configs/project.env
+configs/sites.csv
 
-# Research data: recordings, derived tables, site coordinates
-sample/
-embeddings_db/
-out/
-metadata.csv
-aru_locations_*.csv
+# All research data: recordings, annotations, intermediate and processed
+# outputs, splits. See data/README.md for the layout.
+data/*
+!data/README.md
+
+# Trained classifiers and evaluation reports (derived from research data)
+models/*
+!models/README.md
+reports/*
+!reports/README.md
+
+# Belt and braces: never commit audio or site coordinates anywhere
 *.wav
 *.WAV
 *.flac
+aru_locations_*.csv
+
+# Editor backups
+*~
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Labeling work files
-review*.csv
-labels*.csv
-labels/
-
-# Train/test copies of recordings
-dataset/
-
-# Model output caches
-.cache/
-
-# Trained classifiers (derived from research data)
-models/

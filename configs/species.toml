@@ -1,0 +1,14 @@
+# Per-species settings used by bgp-evaluate (and later archive runs).
+# common:      name as used in your labels and by BirdNET
+# scientific:  name as used by Perch
+# perch_cutoffs:         Perch built-in score cutoffs to report
+# classifier_C:          regularization for the classifier on Perch embeddings
+# classifier_threshold:  score cutoff for the classifier
+# Cutoffs and C below were chosen on the round-1 training recordings only.
+
+[field_sparrow]
+common = "Field Sparrow"
+scientific = "Spizella pusilla"
+perch_cutoffs = [8, 7, 6]
+classifier_C = 0.01
+classifier_threshold = 0.5
