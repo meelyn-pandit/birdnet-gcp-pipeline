@@ -81,6 +81,7 @@ pytest                                                 # quick check
 | `bash infra/gcp/gcp_setup.sh` | Enable APIs, create bucket + BigQuery dataset |
 | `bash infra/gcp/upload.sh SITE_DIR...` | Resumable upload to `gs://BUCKET/raw/<site>/` |
 | `bash infra/gcp/load_metadata.sh` | Load the metadata table into BigQuery |
+| `bash infra/gcp/setup_github_wif.sh` | One-time: let the GitHub `deploy` workflow deploy the detection job via Workload Identity Federation (no keys) |
 
 Every command has `--help`. Defaults point into `data/`, `models/` and
 `reports/`; pass paths to override. The full workflow is in

@@ -1,0 +1,66 @@
+name: deploy
+
+# Build the detection image in Cloud Build and update the Cloud Run Job.
+# Manual only (Actions -> deploy -> Run workflow) so builds, and their cost,
+# happen when you choose. Authenticates with Workload Identity Federation:
+# no service-account key. One-time setup: infra/gcp/setup_github_wif.sh.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tasks:
+        description: Cloud Run Job tasks
+        default: "20"
+      parallelism:
+        description: Tasks running at once
+        default: "5"
+
+permissions:
+  contents: read
+  id-token: write   # lets the job request a GitHub OIDC token for WIF
+
+concurrency:
+  group: deploy-detect
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # The WIF provider also rejects other branches; this fails fast with a clear message.
+    if: github.ref == 'refs/heads/trunk'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run tests before deploying
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q libsndfile1
+          pip install -e ".[dev]"
+          pytest -q
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Write configs/project.env from repository variables
+        run: |
+          cat > configs/project.env <<EOF
+          PROJECT_ID=${{ vars.GCP_PROJECT_ID }}
+          REGION=${{ vars.GCP_REGION }}
+          BUCKET=${{ vars.GCP_BUCKET }}
+          DATASET=${{ vars.GCP_DATASET || 'birdnet' }}
+          RAW_PREFIX=${{ vars.GCP_RAW_PREFIX || 'raw' }}
+          EOF
+
+      - name: Build image and update the Cloud Run Job
+        env:
+          TASKS: ${{ inputs.tasks }}
+          PARALLELISM: ${{ inputs.parallelism }}
+        run: bash infra/gcp/deploy_detect.sh --code-only "$TASKS" "$PARALLELISM"
