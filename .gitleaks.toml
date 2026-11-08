@@ -24,5 +24,9 @@ description = "Password, token, API key or secret assigned a literal value"
 regex = '''(?i)[a-z0-9_.-]*(?:passw(?:or)?d|passwd|pwd|secret|api[_-]?key|access[_-]?key|private[_-]?key|auth[_-]?token|token|credentials?)[a-z0-9_.-]*["']?\s*[:=]\s*["']?([^\s"'#,;)]{6,})'''
 secretGroup = 1
 [rules.allowlist]
-# Values that reference a secret instead of containing one.
-regexes = ['''^(?:os\.|getenv|environ|\$|<|\{|None$|null$|true$|false$|process\.env|secrets\.|vars\.|BILLING_ACCOUNT_ID$|your[-_])''']
+# Values that reference a secret instead of containing one, and package
+# version pins such as "asttokens==3.0.2" (digits separated by dots).
+regexes = [
+  '''^(?:os\.|getenv|environ|\$|<|\{|None$|null$|true$|false$|process\.env|secrets\.|vars\.|BILLING_ACCOUNT_ID$|your[-_])''',
+  '''^=?[0-9]+(?:\.[0-9]+)+(?:[a-z0-9.+-]*)$''',
+]
