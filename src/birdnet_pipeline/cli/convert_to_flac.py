@@ -1,29 +1,29 @@
-#!/usr/bin/env python3
 """Losslessly convert WAV files to FLAC, mirroring the folder structure.
 
 Streams in blocks, so long recordings do not need to fit in memory.
-Existing outputs are skipped, so the script can be rerun after interruption.
+Existing outputs are skipped, so it can be rerun after interruption.
 
 Note: FLAC conversion drops WAV-specific metadata chunks (for example
-AudioMoth comment or GUANO chunks). Build metadata.csv from the original
-WAVs first if you need anything from those chunks.
+AudioMoth comment or GUANO chunks). Build the metadata table from the
+original WAVs first if you need anything from those chunks.
 
 Example:
-    python scripts/convert_to_flac.py /Volumes/Field/recordings /Volumes/Field/flac
+    bgp-convert-flac /Volumes/Field/recordings /Volumes/Field/flac
 """
 import argparse
 from pathlib import Path
 
-import soundfile as sf
-
 BLOCK = 1 << 20  # frames per block
 
 
-def main():
-    ap = argparse.ArgumentParser()
+def main(argv=None):
+    import soundfile as sf
+
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("src", type=Path)
     ap.add_argument("dst", type=Path)
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     done = skipped = failed = 0
     for p in sorted(args.src.rglob("*")):

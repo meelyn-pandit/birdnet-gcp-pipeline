@@ -1,14 +1,13 @@
-#!/usr/bin/env python3
 """Total up the archive by format and estimate upload time.
 
 Example:
-    python scripts/estimate_upload.py /Volumes/Field/recordings --mbps 50
+    bgp-estimate-upload /Volumes/Field/recordings --mbps 50
 """
 import argparse
 from collections import Counter
 from pathlib import Path
 
-AUDIO_EXTS = {".wav", ".flac", ".mp3", ".ogg"}
+from ..metadata import AUDIO_EXTS
 
 
 def human(n):
@@ -19,11 +18,12 @@ def human(n):
     return f"{n:.1f} PB"
 
 
-def main():
-    ap = argparse.ArgumentParser()
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("root", type=Path)
     ap.add_argument("--mbps", type=float, default=50, help="Upload speed in megabits per second")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     if not args.root.is_dir():
         ap.error(f"not a directory: {args.root}")
 
