@@ -1,13 +1,19 @@
-# BirdNET Acoustic Embedding Pipeline on GCP
+# BirdNET Acoustic Monitoring Pipeline on GCP
 
-A portfolio project that runs BirdNET over field recordings, stores detections
-and embeddings in BigQuery, and builds toward a few-shot classifier and a
-dashboard on top of them.
+Runs pretrained bird-sound models (BirdNET, Google's Perch) over field
+recordings, keeps recording metadata and results in BigQuery, and trains
+small species classifiers from your own labels where the pretrained models
+fall short.
+
+**First result:** on held-out recordings from central Oklahoma, BirdNET
+found 3 of 23 Field Sparrow song windows; a classifier on Perch embeddings
+trained on ~60 labeled windows found 17 with 4 false alarms
+(`bgp-evaluate --species "Field Sparrow"`).
 
 ## Target architecture
 
-```
-Hard drive ──rsync──▶ Cloud Storage (raw/)
+```text
+Hard drive ──rsync──▶ Cloud Storage (raw/<site>/)
                           │
           ┌───────────────┴────────────────┐
           ▼                                ▼
@@ -20,73 +26,79 @@ Hard drive ──rsync──▶ Cloud Storage (raw/)
        recordings │ detections │ embeddings
                           │
                           ▼
-     Few-shot classifier  +  vector search  +  dashboard
+     Species classifiers  +  vector search  +  dashboard
 ```
-
-## Why GCP and BigQuery
-
-- BirdNET is a lightweight TFLite model that runs on CPU, so either cloud
-  handles inference equally well.
-- BigQuery has built-in vector search, so similarity queries over embeddings
-  ("find clips that sound like this one") run in SQL next to detections and
-  site metadata.
-- BigQuery GIS handles joins to locations and habitat layers without a
-  separate geospatial stack.
-- Keep the inference step a plain Docker container (read audio from a bucket,
-  write results out, no cloud-specific code inside) so the compute can be
-  ported to AWS later if needed.
 
 ## Repository layout
 
-| Path | What it is |
-|---|---|
-| `docs/GETTING_STARTED.md` | The five setup phases, in order |
-| `docs/ROADMAP.md` | What comes after the data is in the cloud |
-| `config/sites_template.csv` | Site metadata to fill in (ID, lat/lon, recorder, time zone) |
-| `config/project.env.template` | Project, bucket, region and dataset names |
-| `scripts/build_metadata.py` | Walks the drive and builds `metadata.csv`, one row per file |
-| `scripts/pick_sample.py` | Copies a stratified sample of files for the local BirdNET test |
-| `scripts/estimate_upload.py` | Totals archive size and estimates upload time |
-| `scripts/convert_to_flac.py` | Optional lossless WAV → FLAC conversion |
-| `scripts/gcp_setup.sh` | Enables APIs, creates the bucket and BigQuery dataset |
-| `scripts/upload.sh` | Resumable upload with `gcloud storage rsync` |
-| `scripts/load_metadata.sh` | Loads `metadata.csv` into BigQuery |
-| `sql/recordings_schema.json` | BigQuery schema for the recordings table |
-| `requirements.txt` | Python dependencies for the local scripts |
+```text
+├── pyproject.toml          package, dependencies, bgp-* commands
+├── requirements.lock       exact versions of the working environment
+├── src/birdnet_pipeline/   the code (one copy of each piece of logic)
+│   ├── annotations.py      label formats + label-to-window rules (shared by everything)
+│   ├── metadata.py         per-recording metadata (site, UTC start, BirdNET week)
+│   ├── detectors/          BirdNET output reader, Perch runner (cached)
+│   ├── classifier.py       species classifiers on embeddings, save/load
+│   ├── evaluation.py       detection metrics, split handling
+│   ├── config.py, paths.py species settings, default locations
+│   └── cli/                the bgp-* commands
+├── tests/                  pytest: label rules, merge safety, metadata
+├── configs/                project.env / sites.csv templates, species.toml
+├── data/                   local research data, not committed (see data/README.md)
+├── models/                 trained classifiers, not committed
+├── reports/                evaluation results (JSON), not committed
+├── infra/
+│   ├── gcp/                setup, upload, BigQuery load scripts
+│   └── budget_killswitch/  Cloud Function enforcing the $10/month cap
+├── sql/                    BigQuery schemas
+└── docs/                   GETTING_STARTED (step by step), ROADMAP
+```
 
-## Quick start
+## Setup
 
 ```bash
-pip install -r requirements.txt
-cp config/project.env.template config/project.env    # then edit it
-# fill in config/sites_template.csv → save as config/sites.csv
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.lock && pip install --no-deps -e .   # exact environment
+# or, resolving fresh:  pip install -e ".[ml,dev]"
 
-python scripts/estimate_upload.py /path/to/recordings --mbps 50
-python scripts/build_metadata.py /path/to/recordings --sites config/sites.csv -o metadata.csv
-python scripts/pick_sample.py metadata.csv /path/to/recordings sample/ --per-site 3
-
-# test BirdNET locally on sample/ (see docs/GETTING_STARTED.md, phase 2)
-
-bash scripts/gcp_setup.sh
-bash scripts/upload.sh /path/to/recordings/site_folder [more site folders ...]
-bash scripts/load_metadata.sh metadata.csv
+cp configs/project.env.template configs/project.env    # then edit
+cp configs/sites_template.csv configs/sites.csv        # one row per site
+pytest                                                 # quick check
 ```
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `bgp-estimate-upload DIR` | Total archive size and upload time |
+| `bgp-build-metadata DIR` | One row per recording → `data/processed/metadata.csv` |
+| `bgp-pick-sample DIR --per-site N` | Copy a sample → `data/raw/sample/` |
+| `bgp-convert-flac SRC DST` | Lossless WAV → FLAC |
+| `bgp-audacity-labels [--merge]` | BirdNET detections → Audacity label files for review |
+| `bgp-review-sheet` | BirdNET detections → review CSV (spreadsheet alternative) |
+| `bgp-load-labels` | Your labels → embeddings database |
+| `bgp-evaluate --species "..." [--save M]` | BirdNET vs Perch vs classifier on the test split; saves report (and model) |
+| `bash infra/gcp/gcp_setup.sh` | Enable APIs, create bucket + BigQuery dataset |
+| `bash infra/gcp/upload.sh SITE_DIR...` | Resumable upload to `gs://BUCKET/raw/<site>/` |
+| `bash infra/gcp/load_metadata.sh` | Load the metadata table into BigQuery |
+
+Every command has `--help`. Defaults point into `data/`, `models/` and
+`reports/`; pass paths to override. The full workflow is in
+[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
 
 ## Licensing note
 
-The BirdNET model weights have been released under a non-commercial license
-(CC BY-NC-SA). That is fine for a personal portfolio project. If this work
-ever becomes part of commercial or employer work, confirm the current license
-first, or swap in Google's Perch model, which is released under a more
-permissive license.
+The BirdNET model weights are released under a non-commercial license
+(CC BY-NC-SA), fine for a personal portfolio project. For commercial or
+employer work, confirm the current license first. Perch is released under a
+more permissive license.
 
 ## Secret scanning
 
 Commits are checked for tokens, keys, passwords, `.env` files and GCP billing
 account IDs at three levels:
 
-- **GitHub push protection** rejects pushes containing known token formats
-  (enabled in the repo settings).
+- **GitHub push protection** rejects pushes containing known token formats.
 - **Pre-push hook** runs [gitleaks](https://github.com/gitleaks/gitleaks) with
   the rules in `.gitleaks.toml` and blocks the push locally. Enable it once
   per clone (requires gitleaks on your PATH):
@@ -94,4 +106,4 @@ account IDs at three levels:
   git config core.hooksPath .githooks
   ```
 - **CI** (`.github/workflows/secret-scan.yml`) runs the same scan on every
-  push and pull request and fails the check if anything is found.
+  push and pull request.
