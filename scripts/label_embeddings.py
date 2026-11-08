@@ -139,8 +139,11 @@ def main():
         for emb_id, src in zip(ids, db.get_embedding_sources(ids)):
             windows[stem(src.source_id)].append((int(emb_id), float(src.offsets[0]), float(src.offsets[1])))
 
-    added = skipped = unreviewed = 0
-    per_label, unmatched = Counter(), []
+    # Collect first: several annotations (e.g. overlapping BirdNET windows from
+    # --overlap) can land on the same embedding window. Keyed by
+    # (embedding_id, label, provenance) -> {type: description}.
+    unreviewed = 0
+    unmatched, wanted = [], defaultdict(dict)
     for path in args.annotations:
         for a in read_annotations(path, args.label_col, args.provenance):
             if a is UNREVIEWED:
@@ -149,28 +152,56 @@ def main():
             if a["end"] <= a["start"]:   # point label: the window containing it
                 hits = [w for w in windows.get(a["file"], []) if w[1] <= a["start"] < w[2]]
             else:
+                # Short calls (e.g. a 0.4 s note) need only overlap by half their length.
+                need = min(args.min_overlap, 0.5 * (a["end"] - a["start"]))
                 hits = [w for w in windows.get(a["file"], [])
-                        if min(a["end"], w[2]) - max(a["start"], w[1]) >= args.min_overlap]
+                        if min(a["end"], w[2]) - max(a["start"], w[1]) >= need]
             if not hits:
                 unmatched.append(f'{a["where"]} {a["file"]} {a["start"]:g}-{a["end"]:g}s {a["label"]}')
                 continue
             for emb_id, ws, we in hits:
-                label = interface.Label(emb_id, a["label"], a["type"], a["provenance"])
-                if args.dry_run:
-                    print(f'would label #{emb_id} ({a["file"]} {ws:g}-{we:g}s) '
-                          f'{a["label"]} [{a["type"].name.lower()}]')
-                    added += 1
-                elif db.insert_label(label, skip_duplicates=True):
-                    added += 1
-                else:
-                    skipped += 1
-                per_label[(a["label"], a["type"].name.lower())] += 1
+                wanted[(emb_id, a["label"], a["provenance"])][a["type"]] = f'{a["file"]} {ws:g}-{we:g}s'
+
+    # Same window marked both positive and negative for a species: the species
+    # overlaps the window, so positive wins.
+    conflicts = []
+    for (emb_id, label, prov), types in wanted.items():
+        if POS in types and NEG in types:
+            conflicts.append(f"#{emb_id} ({types[POS]}) {label}")
+            del types[NEG]
+
+    added = skipped = 0
+    per_label, db_conflicts = Counter(), []
+    for (emb_id, label, prov), types in sorted(wanted.items()):
+        (typ, where), = types.items()
+        lab = interface.Label(emb_id, label, typ, prov)
+        opposite = NEG if typ is POS else POS
+        if any(l.label == label and l.type is opposite for l in db.get_labels(emb_id)):
+            db_conflicts.append(f"#{emb_id} ({where}) {label}: already {opposite.name.lower()} in DB")
+        if args.dry_run:
+            print(f"would label #{emb_id} ({where}) {label} [{typ.name.lower()}]")
+            added += 1
+        elif db.insert_label(lab, skip_duplicates=True):
+            added += 1
+        else:
+            skipped += 1
+        per_label[(label, typ.name.lower())] += 1
 
     if not args.dry_run:
         db.commit()
     verb = "Would add" if args.dry_run else "Added"
     print(f"{verb} {added} labels from {len(args.annotations)} file(s) "
-          f"({skipped} duplicates skipped, {unreviewed} unreviewed skipped)")
+          f"({skipped} already in DB, {unreviewed} unreviewed skipped)")
+    if conflicts:
+        print(f"{len(conflicts)} windows were marked both positive and negative for the same "
+              f"species; kept positive:", file=sys.stderr)
+        for c in conflicts[:20]:
+            print("  " + c, file=sys.stderr)
+    if db_conflicts:
+        print(f"{len(db_conflicts)} labels contradict labels already in the DB (both kept; "
+              f"review these):", file=sys.stderr)
+        for c in db_conflicts[:20]:
+            print("  " + c, file=sys.stderr)
     for (label, typ), n in sorted(per_label.items()):
         print(f"  {label} [{typ}]: {n} windows")
     if unmatched:
