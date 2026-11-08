@@ -1,0 +1,16 @@
+# Files NOT uploaded to Cloud Build (gcloud builds submit). Mirrors .dockerignore.
+.gcloudignore
+.git
+.gitignore
+.venv/
+data/
+models/
+reports/
+.pytest_cache/
+__pycache__/
+*.egg-info/
+configs/project.env
+configs/sites.csv
+*.wav
+*.WAV
+*.flac

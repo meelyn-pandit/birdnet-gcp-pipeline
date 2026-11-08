@@ -1,0 +1,33 @@
+# Settings for bgp-detect (all-species detection across a region).
+
+[region]
+name = "Lexington WMA, Oklahoma"
+# Birds: BirdNET's location model, year-round, unioned over every site in the
+# metadata table. Species predicted at or above this frequency are kept.
+birdnet_species_threshold = 0.03
+# Non-birds Perch should also report (scientific names as in Perch's label
+# list; unknown names are reported and skipped). BirdNET's location filter
+# never reports non-birds, so these come from Perch only.
+extra_perch_classes = [
+  # frogs and toads of central Oklahoma
+  "Acris blanchardi", "Acris crepitans", "Anaxyrus americanus", "Anaxyrus woodhousii",
+  "Anaxyrus cognatus", "Anaxyrus debilis", "Dryophytes chrysoscelis", "Dryophytes versicolor",
+  "Hyla chrysoscelis", "Hyla versicolor", "Hyla cinerea", "Dryophytes cinereus",
+  "Pseudacris fouquettei", "Pseudacris crucifer", "Pseudacris streckeri",
+  "Gastrophryne olivacea", "Lithobates catesbeianus", "Lithobates blairi",
+  "Lithobates sphenocephalus", "Scaphiopus couchii", "Spea bombifrons",
+  # candidate for the unidentified 2.3 kHz whistle series (out of known range)
+  "Hyla avivoca",
+]
+
+[detect]
+window_s = 3.0
+# BirdNET: per-recording lat/lon/week; non-overlapping 3 s windows so every
+# method shares one window grid.
+birdnet_min_conf = 0.1
+# Perch: keep the top-k regional classes per window whose logit >= floor.
+perch_top_k = 5
+perch_logit_floor = 2.0
+# Classifiers (joblib bundles from bgp-evaluate --save), local paths or gs://.
+classifiers = ["gs://birdnet-pipeline-birdnet-audio/models/field_sparrow_perch.joblib"]
+classifier_floor = 0.05

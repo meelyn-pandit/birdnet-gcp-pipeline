@@ -7,6 +7,7 @@ Everything in here is local research data and is not committed (see
 | Folder | Contents | Made by |
 |---|---|---|
 | `raw/sample/` | Recordings used for development (copied from the field drive) | `bgp-pick-sample` |
+| `raw/round2/` | Train/test recordings from all sites, named `<site>_<aru>_<timestamp>` | `bgp-pick-split` |
 | `raw/sample_flac/` | FLAC copies of the sample | `bgp-convert-flac` |
 | `raw/aru_locations_*.csv` | Recorder coordinates (sensitive: never commit) | you |
 | `annotations/labels/` | Audacity label files, one per recording: **your review work** | `bgp-audacity-labels`, then you |
@@ -16,6 +17,7 @@ Everything in here is local research data and is not committed (see
 | `processed/metadata.csv` | One row per recording: site, UTC start, duration... | `bgp-build-metadata` |
 | `processed/embeddings_db/` | BirdNET embeddings + your labels (Perch Hoplite DB) | `birdnet_analyzer.embeddings`, `bgp-load-labels` |
 | `splits/split.csv` | Which recordings are train / test | you |
+| `splits/round2_split.csv` | Multi-site train / test split, with labeling priority | `bgp-pick-split` |
 
 **Back up `annotations/`.** Everything else can be regenerated; your labels
 cannot. For example:

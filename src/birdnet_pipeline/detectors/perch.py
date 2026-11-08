@@ -36,8 +36,12 @@ def load_audio(path) -> np.ndarray:
     return signal.resample_poly(x, SAMPLE_RATE, sr).astype(np.float32)
 
 
-def window_outputs(model, audio_path, windows, class_idx: int):
-    """(logits for one class, embeddings) for each (w0, w1) window."""
+def class_names(model) -> list[str]:
+    return list(model.class_list["labels"].classes)
+
+
+def all_outputs(model, audio_path, windows):
+    """(logits for ALL classes [n_windows, n_classes], embeddings [n_windows, 1536])."""
     x = load_audio(audio_path)
     dur = len(x) / SAMPLE_RATE
     n_ctx = int(CONTEXT_S * SAMPLE_RATE)
@@ -48,9 +52,26 @@ def window_outputs(model, audio_path, windows, class_idx: int):
         frame = x[s0:s0 + n_ctx]
         frames.append(np.pad(frame, (0, n_ctx - len(frame))))
     out = model.batch_embed(np.stack(frames)[:, None, :])
-    logits = np.asarray(out.logits["label"]).reshape(len(windows), -1)[:, class_idx]
+    logits = np.asarray(out.logits["label"]).reshape(len(windows), -1)
     emb = np.asarray(out.embeddings).reshape(len(windows), -1)
     return logits, emb
+
+
+def window_outputs(model, audio_path, windows, class_idx: int):
+    """(logits for one class, embeddings) for each (w0, w1) window."""
+    logits, emb = all_outputs(model, audio_path, windows)
+    return logits[:, class_idx], emb
+
+
+def top_classes(logits, class_idx, top_k: int = 5, floor: float = 2.0):
+    """Per window, the top_k classes among class_idx with logit >= floor: [(window, class, logit)]."""
+    class_idx = np.asarray(class_idx)
+    sub = logits[:, class_idx]
+    out = []
+    for w in range(sub.shape[0]):
+        order = np.argsort(-sub[w])[:top_k]
+        out.extend((w, int(class_idx[j]), float(sub[w, j])) for j in order if sub[w, j] >= floor)
+    return out
 
 
 class CachedPerch:

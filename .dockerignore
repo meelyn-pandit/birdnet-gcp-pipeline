@@ -1,0 +1,14 @@
+# Keep the build context small and free of research data and secrets.
+.git
+.venv
+data
+models
+reports
+.pytest_cache
+**/__pycache__
+**/*.egg-info
+configs/project.env
+configs/sites.csv
+*.wav
+*.WAV
+*.flac
